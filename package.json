@@ -48,7 +48,7 @@
   },
   "packageManager": "pnpm@10.33.0",
   "lint-staged": {
-    "*.js": "eslint --cache --fix",
+    "*.js": "eslint --fix",
     "*.{js,css,md}": "prettier --write"
   }
 }
