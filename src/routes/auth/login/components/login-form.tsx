@@ -1,41 +1,54 @@
-import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router";
+import { z } from "zod";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DEMO_LOGIN, useAuthStore } from "@/stores/auth-store";
+
+const loginSchema = z.object({
+  email: z.string().trim().min(1, "Email is required.").email("Enter a valid email address."),
+  password: z.string().min(1, "Password is required.").min(8, "Password must be at least 8 characters."),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"form">) {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: DEMO_LOGIN.email,
+      password: DEMO_LOGIN.password,
+    },
+  });
 
-    const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
-
-    setError("");
-    setIsSubmitting(true);
+  async function onSubmit(values: LoginFormValues) {
     await new Promise((resolve) => setTimeout(resolve, 850));
 
-    if (email !== DEMO_LOGIN.email || password !== DEMO_LOGIN.password) {
-      setIsSubmitting(false);
-      setError("These demo credentials do not match. Use the test email and password shown below.");
+    if (values.email !== DEMO_LOGIN.email || values.password !== DEMO_LOGIN.password) {
+      setError("root", {
+        message: "These demo credentials do not match. Use the test email and password shown below.",
+      });
       return;
     }
 
-    login(email);
+    login(values.email);
     navigate("/dashboard", { replace: true });
   }
 
   return (
-    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit(onSubmit)} noValidate {...props}>
       <FieldGroup className="gap-9">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
@@ -46,20 +59,20 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"form">)
           <p className="mt-1 text-muted-foreground">Email: {DEMO_LOGIN.email}</p>
           <p className="text-muted-foreground">Password: {DEMO_LOGIN.password}</p>
         </div>
-        <Field>
+        <Field data-invalid={!!errors.email}>
           <FieldLabel htmlFor="email" className="font-bold text-sm">
             Email
           </FieldLabel>
           <Input
             id="email"
-            name="email"
             type="email"
-            defaultValue={DEMO_LOGIN.email}
             placeholder="m@example.com"
-            required
+            aria-invalid={!!errors.email}
+            {...register("email")}
           />
+          <FieldError errors={[errors.email]} />
         </Field>
-        <Field>
+        <Field data-invalid={!!errors.password}>
           <div className="flex items-center">
             <FieldLabel htmlFor="password" className="font-bold text-sm">
               Password
@@ -68,9 +81,10 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"form">)
               Forgot your password?
             </a>
           </div>
-          <Input id="password" name="password" type="password" defaultValue={DEMO_LOGIN.password} required />
+          <Input id="password" type="password" aria-invalid={!!errors.password} {...register("password")} />
+          <FieldError errors={[errors.password]} />
         </Field>
-        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+        <FieldError errors={[errors.root]} />
         <Field>
           <Button type="submit" className={"text-sm"} disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Login"}
