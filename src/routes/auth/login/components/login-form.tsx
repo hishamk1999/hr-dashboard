@@ -1,21 +1,63 @@
+import { useState } from "react";
+import { useNavigate } from "react-router";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { DEMO_LOGIN, useAuthStore } from "@/stores/auth-store";
 
 export function LoginForm({ className, ...props }: React.ComponentProps<"form">) {
+  const navigate = useNavigate();
+  const login = useAuthStore((state) => state.login);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    setError("");
+    setIsSubmitting(true);
+    await new Promise((resolve) => setTimeout(resolve, 850));
+
+    if (email !== DEMO_LOGIN.email || password !== DEMO_LOGIN.password) {
+      setIsSubmitting(false);
+      setError("These demo credentials do not match. Use the test email and password shown below.");
+      return;
+    }
+
+    login(email);
+    navigate("/dashboard", { replace: true });
+  }
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup className="gap-9">
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
           <p className="text-sm text-balance text-muted-foreground">Enter your email below to login to your account</p>
         </div>
+        <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+          <p className="font-semibold">Demo test account</p>
+          <p className="mt-1 text-muted-foreground">Email: {DEMO_LOGIN.email}</p>
+          <p className="text-muted-foreground">Password: {DEMO_LOGIN.password}</p>
+        </div>
         <Field>
           <FieldLabel htmlFor="email" className="font-bold text-sm">
             Email
           </FieldLabel>
-          <Input id="email" type="email" placeholder="m@example.com" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            defaultValue={DEMO_LOGIN.email}
+            placeholder="m@example.com"
+            required
+          />
         </Field>
         <Field>
           <div className="flex items-center">
@@ -26,11 +68,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"form">)
               Forgot your password?
             </a>
           </div>
-          <Input id="password" type="password" required />
+          <Input id="password" name="password" type="password" defaultValue={DEMO_LOGIN.password} required />
         </Field>
+        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
         <Field>
-          <Button type="submit" className={"text-sm"}>
-            Login
+          <Button type="submit" className={"text-sm"} disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Login"}
           </Button>
         </Field>
         <FieldSeparator className="text-sm">Or continue with</FieldSeparator>
